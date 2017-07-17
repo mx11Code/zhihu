@@ -73,8 +73,12 @@ WSGI_APPLICATION = 'zhihu.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'zhihu',
+        'USER': 'pmx',
+        'PASSWORD': '?/>.<,123456',
+        'HOST': '127.0.0.1',
+        'PORT': '3306',
     }
 }
 
@@ -113,3 +117,12 @@ USE_TZ = False
 # https://docs.djangoproject.com/en/1.11/howto/static-files/
 
 STATIC_URL = '/static/'
+
+EMAIL_HOST = "smtp.163.com"
+EMAIL_PORT = 25
+EMAIL_USE_TLS = True
+# EMAIL_USE_SSL = True
+EMAIL_HOST_PASSWORD = "zhuhe963852741"
+EMAIL_HOST_USER = "18672553257@163.com"
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
