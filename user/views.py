@@ -12,6 +12,26 @@ def random_str(length=15, population=string.ascii_letters):
     return "".join(random.sample(population, length))
 
 
+def auth(request):
+    username = request.POST.get("username")
+    password = request.POST.get("password")
+    get_object_or_404(User, username=username, password=password)
+    request.session["auth"] = True
+    return JsonResponse({"success": True})
+
+
+def logout(request):
+    request.session.clear()
+    return JsonResponse({"success": True})
+
+
+def protected(request):
+    if "auth" in request.session:
+        return JsonResponse({"success": True})
+    else:
+        return JsonResponse({}, status=401)
+
+
 def register(request):
     # a = request.GET["a"]
     now = timezone.now()
