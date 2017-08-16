@@ -26,6 +26,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+APPEND_SLASH = True
 # Application definition
 
 INSTALLED_APPS = [
@@ -35,7 +36,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'user'
+    'user',
+    'question'
 ]
 
 MIDDLEWARE = [
@@ -46,6 +48,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'zhihu.middle.dict_to_json_response.DictToJsonResponse'
 ]
 
 ROOT_URLCONF = 'zhihu.urls'
@@ -113,11 +116,15 @@ USE_L10N = True
 
 USE_TZ = False
 
+AUTH_USER_MODEL = "user.User"
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.11/howto/static-files/
 
 STATIC_URL = '/static/'
-
+STATICFILES_DIRS = [
+    "./static/"
+]
 EMAIL_HOST = "smtp.163.com"
 EMAIL_PORT = 25
 EMAIL_USE_TLS = True
@@ -126,3 +133,4 @@ EMAIL_HOST_PASSWORD = "zhuhe963852741"
 EMAIL_HOST_USER = "18672553257@163.com"
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
+USERS_VERIFY_EMAIL = False

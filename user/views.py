@@ -1,85 +1,92 @@
-from django.shortcuts import render
-from django.http import HttpResponse, JsonResponse
-from .models import User, UserForm
-from django.utils import timezone
-from django.shortcuts import get_object_or_404
 import string
 import random
+from django.shortcuts import render
+from django.shortcuts import get_object_or_404
+from django.http import HttpResponse, JsonResponse
+from django.contrib.auth.hashers import make_password, check_password
+from django.contrib.auth import authenticate as django_authenticate, login as django_login, logout as django_logout
+from django.utils import timezone
 from django.core.mail import send_mail
+
+from zhihu.models import get_model_list
+from .models import User
+
+
+def authenticate(**kwargs):
+    user = django_authenticate(**kwargs)
+    if not user.is_active or user.is_deleted:
+        return None
+    return user
+
+
+def register(request):
+    email = request.POST.get("email", "")
+    password = request.POST.get("password", "")
+    new_user = User(email=email, password=make_password(password))
+    new_user.save()
+    return JsonResponse({"success": True, "id": new_user.id})
+
+
+def login(request):
+    email = request.POST.get("email")
+    password = request.POST.get("password")
+    exist_user = authenticate(email=email, password=password)
+
+    if exist_user is not None:
+        django_login(request, exist_user)
+        return JsonResponse({"success": True})
+    else:
+        return JsonResponse({"success": "invalid login"})
+
+
+def logout(request):
+    django_logout(request)
+    return JsonResponse({"success": True})
 
 
 def random_str(length=15, population=string.ascii_letters):
     return "".join(random.sample(population, length))
 
 
-def auth(request):
-    username = request.POST.get("username")
-    password = request.POST.get("password")
-    get_object_or_404(User, username=username, password=password)
-    request.session["auth"] = True
-    return JsonResponse({"success": True})
-
-
-def logout(request):
-    request.session.clear()
-    return JsonResponse({"success": True})
-
-
-def protected(request):
-    if "auth" in request.session:
-        return JsonResponse({"success": True})
-    else:
-        return JsonResponse({}, status=401)
-
-
-def register(request):
-    # a = request.GET["a"]
-    now = timezone.now()
-
-    # exists_user = User.objects.get(pk=1)
-    # form = UserForm(request.POST)
-
-    username = request.POST.get("username", "")
-    password = request.POST.get("password", "")
-    register_email = request.POST.get("register_email", "")
-    # random_str(10, population=string.printable)
-
-    # valid = True
-    # if not username or not password:
-    #     valid = False
-    #
-    # count = User.objects.filter(username=username).count()
-    # if count > 0:
-    #     valid = False
-    #
-    # if valid:
-    new_user = User(username=username, password=password, register_time=now, register_email=register_email)
-    new_user.save()
-
-    # new_user = form.save(commit=False)
-    return JsonResponse(
-        {"register_email": new_user.register_email, "success": True, "username": new_user.username,
-         "register time": new_user.register_time})  # else:
-    # return JsonResponse({"success": False})
-
-
 def reset(request):
-    # form = UserForm(request.POST)
     email = request.POST.get("email")
-    # user_id = request.POST.get("id")
-
-    exist_user = get_object_or_404(User, register_email=email)
-    token = random_str()
-
-    exist_user.reset_token = token
-    exist_user.reset_token_time = timezone.now()
+    exist_user = get_object_or_404(User, email=email)
+    reset_token = random_str()
+    reset_token_time = timezone.now()
+    exist_user.reset_token = reset_token
+    exist_user.reset_token_time = reset_token_time
     exist_user.save()
-    to_email = "492779595@qq.com"
-    send_mail(
-        'Verify mailbox',
-        'http://127.0.0.1/user/reset/confirm/%s/%s' % (exist_user.id, token),
-        '18672553257@163.com',
-        [to_email],
-        fail_silently=False,
-    )
+    from_email = '18672553257@163.com'
+    to_emails = ['492779595@qq.com']
+    send_mail('verify your mailbox', 'http://127.0.0.1:8000/users/reset/%s/%s/' % (exist_user.id, reset_token),
+              from_email, to_emails, fail_silently=False)
     return JsonResponse({"success": True})
+
+
+def get(request, pk):
+    try:
+        user = User.objects.get(pk=pk)
+    except Exception as e:
+        return {"success": False}
+        # return JsonResponse({"success": False}, status=404)
+    # return JsonResponse(user.to_dict())
+    return user.to_dict()
+
+
+def user_list(request, page, page_size):
+    users, count = get_model_list(request, User, page, page_size)
+    return {
+        "data": [user.to_dict() for user in users],
+        "currentPage": int(page),
+        "pageSize": int(page_size),
+        "count": count
+    }
+
+
+def batch_create_users(request, number):
+    for i in range(int(number)):
+        user = User(
+            email="{}@{}.com".format(random_str(10, string.ascii_letters), random_str(3, string.ascii_lowercase)),
+            password=make_password(random_str(5))
+        )
+        user.save()

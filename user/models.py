@@ -1,47 +1,81 @@
 from django.utils import timezone
+
+from zhihu import models as zhihu_models
 from django.db import models
-from django.core.exceptions import ValidationError
-from django.core.validators import validate_email
-import re
-from django.forms import ModelForm, modelform_factory
-import datetime
+from django.contrib.auth.models import PermissionsMixin
+from django.contrib.auth.base_user import AbstractBaseUser
+from django.contrib.auth.base_user import BaseUserManager
+from django.conf import settings
 
 
-# def validate_is_unique(value):
-#     count = User.objects.filter(username=value).count()
-#     if count > 0:
-#         raise ValidationError(u"The username has been registered.")
+class UserManager(BaseUserManager):
+    def create_user(self, name, email, password=None):
+        if not email:
+            raise ValueError('Users must have an email address')
+        user = self.model(name=name, email=UserManager.normalize_email(email))
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def get_by_natural_key(self, username):
+        return self.get(**{self.model.USERNAME_FIELD: username})
+
+    def _create_user(self, email, password,
+                     is_staff, is_superuser, **extra_fields):
+
+        users_auto_activate = not settings.USERS_VERIFY_EMAIL  # if "USERS_VERIFY_EMAIL" in settings else True
+        now = timezone.now()
+        if not email:
+            raise ValueError('The given email must be set')
+        email = self.normalize_email(email)
+
+        is_active = extra_fields.pop('is_active', users_auto_activate)
+        user = self.model(email=email, is_staff=is_staff, is_active=is_active,
+                          is_superuser=is_superuser, last_login=now,
+                          date_joined=now, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password, **extra_fields):
+        return self._create_user(email=email, password=password,
+                                 is_staff=True, is_superuser=True,
+                                 is_active=True, **extra_fields)
 
 
-def validate_is_blank(value):
-    if not value:
-        raise ValidationError(u"username or password can't be empty!")
+class User(zhihu_models.BaseModel, AbstractBaseUser, PermissionsMixin):
+    email = models.EmailField('email address', unique=True)
+    first_name = models.CharField('first name', max_length=30, blank=True)
+    last_name = models.CharField('last name', max_length=30, blank=True)
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
+    reset_token = models.CharField(max_length=30, null=True)
+    reset_token_time = models.DateTimeField(null=True)
 
+    serializable_fields = ["email", "first_name", "last_name"]
 
-# def validate_mail(email):
-#     try:
-#         validate_email(email)
-#         return True
-#     except ValidationError:
-#         return False
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []
+    objects = UserManager()
 
+    class Meta:
+        verbose_name = 'user'
+        verbose_name_plural = 'users'
 
-# 继承
-class User(models.Model):
-    username = models.CharField(max_length=30, blank=False, null=True)
-    password = models.CharField(max_length=30, blank=False, validators=[validate_is_blank])
-    register_time = models.DateTimeField(blank=True, default=timezone.now)
-    register_email = models.EmailField(unique=True, validators=[validate_is_blank, validate_email])
-    reset_token = models.CharField(max_length=30, blank=True, null=True)
-    reset_token_time = models.DateTimeField(blank=True, null=True)
+    def get_full_name(self):
+        """
+         Returns the first_name plus the last_name, with a space in between.
+        """
+        full_name = '%s %s' % (self.first_name, self.last_name)
+        return full_name.strip()
+
+    def get_short_name(self):
+        """
+         Returns the short name for the user.
+        """
+        return self.first_name
 
     def __unicode__(self):
-        return self.username
+        return u'%s %s' % (self.first_name, self.last_name)
 
-
-# UserForm = modelform_factory(User, fields="__all__")
-
-class UserForm(ModelForm):
-    class Meta:
-        model = User
-        fields = "__all__"
+    def get_natural_key(self):
+        return [self.first_name, self.last_name]

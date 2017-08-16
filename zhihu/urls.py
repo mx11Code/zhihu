@@ -21,7 +21,11 @@ urlpatterns = [
     url(r'^admin/', admin.site.urls),
     # url(r'^helloworld/(\d+)/(\d+)$', hello_world),
     url(r'^users/', include("user.urls")),
+    url(r'^questions/', include("question.urls")),
     url(r'^time/$', current_time),
-    url(r'^datetime/([\w\W]{0,50})', date_time)
+    url(r'^l/(user|question|answer|comment)/(\d+)?/(\d+)?$', model_list),
+    url(r'^d/(user|question|answer|comment)/(\d+)?/$', model_delete),
+    url(r'^datetime/([\w\W]{0,50})', date_time),
+    url(r'^data/', data)
     # url(r'^datetime/$', )
 ]
